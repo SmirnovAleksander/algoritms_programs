@@ -1,20 +1,61 @@
-// lab1_files.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <iostream>
+#include <fstream>
+#include <string>
 
 int main()
 {
-    std::cout << "Hello World!\n";
+    setlocale(LC_ALL, "RU");
+
+    std::string inputFileName, outputFileName;
+
+    std::cout << "Введите название входного файла: ";
+    std::cin >> inputFileName;
+    std::cout << "Введите название выходного файла: ";
+    std::cin >> outputFileName;
+
+    std::ifstream inputFile(inputFileName);
+    if (!inputFile.is_open()) {
+        std::cout << "Ошибка! Файл не был открыт." << std::endl;
+    }
+
+    std::ofstream outputFile(outputFileName);
+    if (!outputFile.is_open()) {
+        std::cout << "Ошибка! Файл не был открыт." << std::endl;
+    }
+
+    std::string str;
+
+    int currentPage = 0;
+    int lastPage = 0;
+    bool isNewParagraph = true;
+    bool isContent = false;
+
+    while (std::getline(inputFile, str)) {
+        if (str.empty()) {
+            isNewParagraph = true;
+            continue;
+        }
+        if (str.length() > 2 && str[0] == '-' && str[str.length() - 1] == '-') {
+            currentPage = atoi(str.c_str() + 1); //он atoi принимает не String а char*, а c_str возвращает указатель на символ
+            if (lastPage != 0 && currentPage > lastPage + 1) {
+                std::cout << "У страницы " << currentPage << " разрывс с " << lastPage << " более чем на одну страницу" << std::endl;
+            }
+            lastPage = currentPage;
+            continue;
+        }
+        if (isNewParagraph) {
+            outputFile << str << " .......... " << currentPage << std::endl;
+            isNewParagraph = false;
+            isContent = true;
+        }
+
+    }
+    if (isContent)
+        std::cout << "Оглавление создано" << std::endl;
+    else
+        std::cout << "Содержимое файла пусто. Оглавление не создано" << std::endl;
+
+    inputFile.close();
+    outputFile.close();
+    return 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
