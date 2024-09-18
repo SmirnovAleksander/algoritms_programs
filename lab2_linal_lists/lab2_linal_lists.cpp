@@ -27,9 +27,7 @@ int main() {
 			std::cout << "Пргрмма была завершена с ошибкой." << std::endl;
 			std::cout << "Ошибка в строке " << errorLine << " на позиции " << errorPosition << std::endl;
 		}
-		
 	}
-
 	return 0;
 }
 
@@ -122,20 +120,17 @@ bool checkProgramComments(const std::string &fileName, int &errorLine, int& erro
 			prevCh = ch;
 		}
 		if (inString) {
-			std::cout << "Ошибка: строка не закрыта.\n";
-		}
-		else {
-			std::cout << "Строка корректна.\n";
-		}
-		inputFile.close();
-
-		if (top != -1) {
-			std::cout << "Остались незакрытые коментарии" << std::endl;
+			std::cout << "Ошибка: строка не закрыта в строке " << lineCount << ".\n";
 			return false;
 		}
-		return true;
+	}
+	inputFile.close();
+	if (top != -1) {
+		std::cout << "Остались незакрытые коментарии" << std::endl;
+		errorLine = comLine[top];
+		errorLine = comPosition[top];
+		return false;
 	}
 
-
-
+	return true;
 }
