@@ -48,8 +48,10 @@ int main()
             isNewParagraph = false;
             isContent = true;
         }
-
     }
+    /*if (!isHeader && lastPage != 0)
+        std::cout << "На странице " << lastPage << " нет заголовков. На ней продолжение последнего абзаца" << std::endl;*/
+
     if (isContent)
         std::cout << "Оглавление создано" << std::endl;
     else
