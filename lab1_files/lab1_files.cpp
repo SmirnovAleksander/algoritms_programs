@@ -16,37 +16,35 @@ int main()
     std::ifstream inputFile(inputFileName);
     if (!inputFile.is_open()) {
         std::cerr << "Ошибка! Файл не был открыт." << std::endl;
-        return 1;
     }
 
     std::ofstream outputFile(outputFileName);
     if (!outputFile.is_open()) {
         std::cerr << "Ошибка! Файл не был открыт." << std::endl;
-        return 1;
     }
 
     std::string str;
     std::string header;
-    int currentPage = 0;
     int lastPage = 0;
-    bool isNewParagraph = true;
-    bool isContent = false;
-    bool singleLineOnPage = false;
-    bool isFirstPage = true;
-    bool firstPageSingleLineError = false;
+    bool isNewParagraph = true; //если есть пустая строка то true, после чтенея заголовка сбрасываю флаг
+    bool isContent = false; //Если ничего не записано то выходной файл удаляется
+
+    //для перой страници и не толлко
+    bool singleLineOnPage = false; //изначально true пока не встретит еще одну строку на cтранице
+    bool isFirstPage = true; //для определения первой стрроки
+    bool onlyOneStrOnFirstPage = false; //если ошибка то фапйл е 
 
     while (std::getline(inputFile, str)) {
         if (str.empty()) {
-            // Пустая строка указывает на конец параграфа
-            if (!header.empty() && lastPage > 0) {
+            if (!header.empty()) {
                 if (isFirstPage && singleLineOnPage) {
-                    firstPageSingleLineError = true;
+                    onlyOneStrOnFirstPage = true;
                 }
                 else {
                     outputFile << header << " .......... " << lastPage << std::endl;
                     isContent = true;
                 }
-                header.clear();
+                header = "";
                 isFirstPage = false;
             }
             isNewParagraph = true;
@@ -55,30 +53,26 @@ int main()
         }
 
         if (str.length() > 2 && str[0] == '-' && str[str.length() - 1] == '-') {
-            // Переход к следующей странице
             int pageNumber = 0;
-            for (size_t i = 1; i < str.length() - 1; ++i) {
+            for (int i = 1; i < str.length() - 1; i++) {
                 if (str[i] < '0' || str[i] > '9') {
-                    std::cerr << "Ошибка! Некорректный номер страницы: " << str << std::endl;
-                    return 1;
+                    std::cout << "Ошибка! Некорректный номер страницы: " << str << std::endl;
                 }
-                pageNumber = pageNumber * 10 + (str[i] - '0');
+                pageNumber = pageNumber * 10 + (str[i] - '0'); //строка - строка = число тк в таблице ASCII у них коды сопадают с самим числоом
             }
 
             if (lastPage != 0 && pageNumber == lastPage) {
                 std::cerr << "Ошибка! Повторяющиеся страницы: " << pageNumber << std::endl;
-                return 1;
             }
 
             if (lastPage != 0 && pageNumber > lastPage + 1) {
                 std::cerr << "Ошибка! Разрыв между страницами: " << lastPage << " и " << pageNumber << std::endl;
-                return 1;
             }
 
             if (!header.empty() && !singleLineOnPage) {
                 outputFile << header << " .......... " << lastPage << std::endl;
                 isContent = true;
-                header.clear();
+                header = "";
             }
 
             lastPage = pageNumber;
@@ -88,21 +82,19 @@ int main()
         }
 
         if (isNewParagraph) {
-            // Сохраняем заголовок параграфа
             header = str;
             isNewParagraph = false;
-            singleLineOnPage = true; // Предполагаем, что это единственная строка на странице
+            singleLineOnPage = true;
         }
         else {
-            // Если на странице есть текст и это не первый заголовок
             singleLineOnPage = false;
         }
     }
-
-    // Записываем последний заголовок и номер страницы
+    //тк header только передался а строки уже закончились то так
+    //из-за этого если поседняя страице содержит одну строку то она не будет учитываться как продолжение предыдущей страницы
     if (!header.empty() && lastPage > 0) {
         if (isFirstPage && singleLineOnPage) {
-            firstPageSingleLineError = true;
+            onlyOneStrOnFirstPage = true;
         }
         else {
             outputFile << header << " .......... " << lastPage << std::endl;
@@ -110,10 +102,10 @@ int main()
         }
     }
 
-    if (firstPageSingleLineError) {
+    if (onlyOneStrOnFirstPage) {
         std::cerr << "Ошибка! На первой странице только одна строка." << std::endl;
-        outputFile.close();  // Закрываем выходной файл, если была ошибка
-        std::remove(outputFileName.c_str());  // Удаляем выходной файл, чтобы не оставлять пустой файл
+        outputFile.close(); 
+        std::remove(outputFileName.c_str()); 
     }
     else if (isContent) {
         std::cout << "Оглавление создано" << std::endl;
@@ -123,5 +115,6 @@ int main()
     }
 
     inputFile.close();
+    outputFile.close();
     return 0;
 }
