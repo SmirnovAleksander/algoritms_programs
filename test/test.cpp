@@ -71,7 +71,7 @@ bool checkProgramComments(const std::string& inputFileName, const std::string& o
                     }
                 }
                 else {
-                    handleError("Некорректное закрытие фигурной скобки", lineCount, position);
+                    handleError("Некорректное закрытие комментария '}'", lineCount, position);
                 }
             }
             else if (currChar == '*' && i + 1 < line.length() && line[i + 1] == ')') {
