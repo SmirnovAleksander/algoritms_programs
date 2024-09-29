@@ -2,130 +2,168 @@
 #include <fstream>
 #include <string>
 
-void handleError(const std::string& message, int& lineNumber, int& position) {
-    std::cerr << "Ошибка: " << message << " на строке " << lineNumber << " на позиции " << position << std::endl;
+using namespace std;
+
+const int max_size = 1000;
+char stack[max_size];
+int stackPosition[max_size];
+int stackLine[max_size];
+int top = -1; 
+
+bool isEmpty() {
+    return top == -1;
+}
+void push(char symbol, int position, int lineNumber) {
+    if (top < max_size - 1) {
+        top++;
+        stack[top] = symbol;
+        stackPosition[top] = position;
+        stackLine[top] = lineNumber;
+    }
+    else {
+        cout << "Ошибка: стек переполнен." << endl;
+    }
+}
+void pop() {
+    if (!isEmpty())
+        top--;
+    else
+        cout << "Ошибка: стек пуст." << endl;
+}
+char topEl() {
+    if (!isEmpty()) {
+        return stack[top];
+    }
+    return '\0';
+}
+int topElPosition() {
+    if (!isEmpty()) {
+        return stackPosition[top];
+    }
+    return -1;
+}
+int topElLine() {
+    if (!isEmpty()) {
+        return stackLine[top];
+    }
+    return -1;
 }
 
-bool checkProgramComments(const std::string& inputFileName, const std::string& outputFileName) {
-    std::ifstream inputFile(inputFileName);
-    std::ofstream outputFile(outputFileName);
-
-    if (!inputFile.is_open()) {
-        std::cerr << "Ошибка открытия входного файла!" << std::endl;
-        return false;
+void checkComments(const string& filename, string& outputFileName) {
+    ifstream file(filename);
+    if (!file.is_open()) {
+        cout << "Не удалось открыть файл." << endl;
     }
-
+    ofstream outputFile(outputFileName);
     if (!outputFile.is_open()) {
-        std::cerr << "Ошибка открытия выходного файла!" << std::endl;
-        return false;
+        cout << "Не удалось создать файл для записи." << endl;
     }
 
-    std::string line;
-    int lineCount = 0;
-    bool inApostrophe = false; //если внутри апострофа
-    int commentSteps = 0;       // Глубина вложенности комментариев
-    bool isFigureComment = false; // если фигурные скобки 
+    top = -1;
+    bool inQuotes = false;
+    string line;
+    bool hasErrors = false;
+    int lineNumber = 0;
 
-    while (std::getline(inputFile, line)) {
-        ++lineCount;
-        std::string thisLine;
-
+    while (getline(file, line)) {
+        lineNumber++;
         for (size_t i = 0; i < line.length(); i++) {
-            char currChar = line[i];
-            int position = i + 1;
-
-            //Если в апосторфах то вот
-            if (currChar == '\'') {
-                inApostrophe = !inApostrophe;
-                thisLine += currChar;
-                continue;
-            }
-            if (inApostrophe) {
-                thisLine += currChar;
-                continue;
+            if (line[i] == '\'') {
+                inQuotes = !inQuotes;
             }
 
-            //откр. коменты
-            if (currChar == '{') {
-                if (commentSteps == 0) {
-                    thisLine += '{';
-                }
-                commentSteps++;
-                isFigureComment = true;
-            }
-            else if (currChar == '(' && i + 1 < line.length() && line[i + 1] == '*') {
-                if (commentSteps == 0) {
-                    thisLine += '{';
-                }
-                commentSteps++;
-                isFigureComment = false;
-                i++;
-            }
-            //закр. коменты
-            else if (currChar == '}') {
-                if (commentSteps > 0 && isFigureComment) {
-                    commentSteps--;
-
-                    if (commentSteps == 0) {
-                        thisLine += '}';
+            if (!inQuotes) {
+                if (line[i] == '{') {
+                    push('{', i, lineNumber);
+                    if (top == 0) {
+                        outputFile << '{';
                     }
                 }
-                else {
-                    handleError("Некорректное закрытие комментария '}'", lineCount, position);
-                }
-            }
-            else if (currChar == '*' && i + 1 < line.length() && line[i + 1] == ')') {
-                if (commentSteps > 0 && !isFigureComment) {
-                    commentSteps--;
-
-                    if (commentSteps == 0) {
-                        thisLine += '}';
+                else if (line[i] == '(' && i + 1 < line.length() && line[i + 1] == '*') {
+                    push('(', i, lineNumber);
+                    if (top == 0) {
+                        outputFile << '{';
                     }
+                    i++;
                 }
+                else if (line[i] == '}') {
+                    if (isEmpty() || topEl() != '{') {
+                        if (isEmpty()) {
+                            cout << "Ошибка: лишний закрывающий символ '}' на строке " << lineNumber << ", позиция " << i << endl;
+                        }
+                        else {
+                            cout << "Ошибка: несоответствующий закрывающий символ '}' на строке " << lineNumber << ", позиция " << i << endl;
+                            cout << "Открывающий символ был найден на строке " << topElLine() << ", позиция " << topElPosition() + 1 << endl;
+                        }
+                        hasErrors = true;
+                        break;
+                    }
+                    else {
+                        pop();   
+                        if (isEmpty() || top == -1) {
+                            outputFile << '}';
+                        }
+                    }
+                    
+                }
+                else if (line[i] == '*' && i + 1 < line.length() && line[i + 1] == ')') {
+                    if (isEmpty() || topEl() != '(') {
+                        if (isEmpty()) {
+                            cout << "Ошибка: лишний закрывающий символ '*)' на строке " << lineNumber << ", позиция " << i << endl;
+                        }
+                        else {
+                            cout << "Ошибка: несоответствующий закрывающий символ '*)' на строке " << lineNumber << ", позиция " << i << endl;
+                            cout << "Открывающий символ был найден на строке " << topElLine() << ", позиция " << topElPosition() + 1 << endl;
+                        }
+                        hasErrors = true;
+                        break;
+                    } else {
+                        pop();
+                        if (isEmpty() || top == -1) {
+                            outputFile << '}';
+                        }
+                        i++;
+                    }
+                } 
                 else {
-                    handleError("Некорректное закрытие комментария '*)'", lineCount, position);
+                    outputFile << line[i];
                 }
-                i++;
-            }
-            else if (commentSteps > 0) {
-                thisLine += currChar; // Copy текста внутри комента            
             }
             else {
-                thisLine += currChar; //copy вего текста
+                outputFile << line[i];
             }
         }
-
-        outputFile << thisLine << std::endl;
+        outputFile << endl;
     }
 
-    if (commentSteps > 0) {
-        std::cerr << "Ошибка: Несоответствие открытых комментариев на строке " << lineCount << std::endl;
-        return false;
+    if (!isEmpty()) {
+        cout << "Ошибка: незакрытый комментарий. Открывающий символ '" << topEl() << "' был найден на строке " << topElLine() << ", позиция " << topElPosition() + 1 << endl;
+        hasErrors = true;
     }
-    return true;
 
-    inputFile.close();
+    file.close();
     outputFile.close();
+
+    if (hasErrors) {
+        remove(outputFileName.c_str());
+        cout << "Файл не создан из-за ошибок" << endl;
+    }
 }
 
 int main() {
     setlocale(LC_ALL, "RU");
-    std::string inputFileName;
-    std::string outputFileName = "output.txt";
-
+    string filename;
+    string outputFileName;
     while (true) {
-        std::cout << "Введите имя входного файла (или 'exit' для выхода): ";
-        std::cin >> inputFileName;
-        if (inputFileName == "exit") {
+        cout << "Введите имя входного файла: ";
+        cin >> filename;
+        cout << "Введите имя выходного файла: ";
+        cin >> outputFileName;
+        cout << "Чтобы выйти напишите 'exit'" << endl;
+        if (filename == "exit") {
             break;
         }
-        if (checkProgramComments(inputFileName, outputFileName)) {
-            std::cout << "Файл обработан успешно!" << std::endl;
-        }
-        else {
-            std::cout << "Произошла ошибка при обработке файла." << std::endl;
-            std::remove(outputFileName.c_str());
-        }
+        checkComments(filename, outputFileName);
     }
     return 0;
 }
