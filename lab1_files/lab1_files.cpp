@@ -17,12 +17,12 @@ int main() {
 
     std::string inputFileName, outputFileName;
 
-    /*std::cout << "¬ведите название входного файла: ";
+    std::cout << "¬ведите название входного файла: ";
     std::cin >> inputFileName;
     std::cout << "¬ведите название выходного файла: ";
-    std::cin >> outputFileName;*/
-    inputFileName = "input.txt";
-    outputFileName = "output.txt";
+    std::cin >> outputFileName;
+    //inputFileName = "input.txt";
+    //outputFileName = "output.txt";
 
     std::ifstream inputFile(inputFileName);
     if (!inputFile.is_open()) {

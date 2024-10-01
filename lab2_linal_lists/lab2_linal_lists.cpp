@@ -1,122 +1,189 @@
+//21. В   некотором   компиляторе   ПАСКАЛя  текст  программы
+//включает примечания, выделенные  фигурными  скобками  '{', '}'
+//либо  парами  символов  '(*'  и  '*)'.Примечания  могут быть
+//вложенными друг в друга.Если примечание открыто знаком  '{',
+//то оно должно быть закрыто знаком '}'.Аналогично примечание,
+//начинающееся с символов '(*'  должно  заканчиваться  символами
+//'*)'.Требуется:
+//1) проверить правильность вложенности примечаний;
+//2) переписать   файл   с   исходным   текстом   так, чтобы
+//отсутствовала  вложенность  комментариев  при  сохранении   их
+//содержания  и  в  качестве  ограничивающих  символов  остались
+//только  фигурные  скобки.Учесть   случай, когда   символы
+//примечаний находятся в апострофах.При некорректности  указать
+//номера строки и позиции первой ошибки(10).
+//
+//Смирнов Александр ПС-21 
+//Компилятор: C++
+//Среда выполнеия: Visual studio 2022
+
 #include <iostream>
-#include <string>
 #include <fstream>
+#include <string>
 
-bool checkprogramcomments(const std::string& filename, int& errorline, int& errorposition);
+using namespace std;
 
-int main() {
-	setlocale(LC_ALL, "ru");
+const int max_size = 1000;
+char stack[max_size];
+int stackPosition[max_size];
+int stackLine[max_size];
+int top = -1;
 
-	std::string filename;
-	int errorline, errorposition;
-
-	while (true) {
-
-		std::cout << "введите имя входного файла или введите 'exit' для выхода: ";
-		std::cin >> filename;
-
-		if (filename == "exit") {
-			std::cout << "прграмма была завершена" << std::endl;
-			break;
-		}
-//основное тело прграммы 
-		if (checkprogramcomments(filename, errorline, errorposition)) {
-			std::cout << "пргрмма была завершена успешно. ошибок в коментариях нет)" << std::endl;
-		}
-		else {
-			std::cout << "прграмма была завершена с ошибкой." << std::endl;
-			std::cout << "ошибка в строке " << errorline << " на позиции " << errorposition << std::endl;
-		}
-	}
-	return 0;
+bool isEmpty() {
+    return top == -1;
+}
+void push(char symbol, int position, int lineNumber) {
+    if (top < max_size - 1) {
+        top++;
+        stack[top] = symbol;
+        stackPosition[top] = position;
+        stackLine[top] = lineNumber;
+    }
+    else {
+        cout << "Ошибка: стек переполнен." << endl;
+    }
+}
+void pop() {
+    if (!isEmpty())
+        top--;
+    else
+        cout << "Ошибка: стек пуст." << endl;
+}
+char topEl() {
+    if (!isEmpty()) {
+        return stack[top];
+    }
+    return '\0';
+}
+int topElPosition() {
+    if (!isEmpty()) {
+        return stackPosition[top];
+    }
+    return -1;
+}
+int topElLine() {
+    if (!isEmpty()) {
+        return stackLine[top];
+    }
+    return -1;
 }
 
-bool checkprogramcomments(const std::string &filename, int &errorline, int &errorposition) {
-	const int max_size = 100;
-	char comtype[max_size]; 
-	int comline[max_size]; 
-	int composition[max_size];
-	int top = -1;
+void checkComments(const string& filename, string& outputFileName) {
+    ifstream file(filename);
+    if (!file.is_open()) {
+        cout << "Не удалось открыть файл." << endl;
+    }
+    ofstream outputFile(outputFileName);
+    if (!outputFile.is_open()) {
+        cout << "Не удалось создать файл для записи." << endl;
+    }
 
-	std::ifstream inputfile(filename);
-	if (!inputfile.is_open()) {
-		std::cout << "файл не был открыт!" << std::endl;
-		return false;
-	}
+    top = -1;
+    bool inQuotes = false;
+    string line;
+    bool hasErrors = false;
+    int lineNumber = 0;
 
-	std::string line;
-	unsigned int linecount = 0;
-	bool instring = false;
+    while (getline(file, line)) {
+        lineNumber++;
+        for (size_t i = 0; i < line.length(); i++) {
+            if (line[i] == '\'') {
+                inQuotes = !inQuotes;
+            }
 
-	while (std::getline(inputfile, line)) {
-		linecount++;
+            if (!inQuotes) {
+                if (line[i] == '{') {
+                    push('{', i, lineNumber);
+                    if (top == 0) {
+                        outputFile << '{';
+                    }
+                }
+                else if (line[i] == '(' && i + 1 < line.length() && line[i + 1] == '*') {
+                    push('(', i, lineNumber);
+                    if (top == 0) {
+                        outputFile << '{';
+                    }
+                    i++;
+                }
+                else if (line[i] == '}') {
+                    if (isEmpty() || topEl() != '{') {
+                        if (isEmpty()) {
+                            cout << "Ошибка: лишний закрывающий символ '}' на строке " << lineNumber << ", позиция " << i << endl;
+                        }
+                        else {
+                            cout << "Ошибка: несоответствующий закрывающий символ '}' на строке " << lineNumber << ", позиция " << i << endl;
+                            cout << "Открывающий символ был найден на строке " << topElLine() << ", позиция " << topElPosition() + 1 << endl;
+                        }
+                        hasErrors = true;
+                        break;
+                    }
+                    else {
+                        pop();
+                        if (isEmpty() || top == -1) {
+                            outputFile << '}';
+                        }
+                    }
 
-		if (line.empty()) {
-			continue;
-		}
+                }
+                else if (line[i] == '*' && i + 1 < line.length() && line[i + 1] == ')') {
+                    if (isEmpty() || topEl() != '(') {
+                        if (isEmpty()) {
+                            cout << "Ошибка: лишний закрывающий символ '*)' на строке " << lineNumber << ", позиция " << i << endl;
+                        }
+                        else {
+                            cout << "Ошибка: несоответствующий закрывающий символ '*)' на строке " << lineNumber << ", позиция " << i << endl;
+                            cout << "Открывающий символ был найден на строке " << topElLine() << ", позиция " << topElPosition() + 1 << endl;
+                        }
+                        hasErrors = true;
+                        break;
+                    }
+                    else {
+                        pop();
+                        if (isEmpty() || top == -1) {
+                            outputFile << '}';
+                        }
+                        i++;
+                    }
+                }
+                else {
+                    outputFile << line[i];
+                }
+            }
+            else {
+                outputFile << line[i];
+            }
+        }
+        outputFile << endl;
+    }
 
-		for (std::size_t i = 0; i < line.size(); ++i) {
-			char ch = line[i];
+    if (!isEmpty()) {
+        cout << "Ошибка: незакрытый комментарий. Открывающий символ '" << topEl() << "' был найден на строке " << topElLine() << ", позиция " << topElPosition() + 1 << endl;
+        hasErrors = true;
+    }
 
-			if (ch == '\'') { //в паскале есть строки writeln('''hello''') -> 'hello' вот вот 
-				if (i + 1 < line.size() && line[i + 1] == '\'') {
-					std::cout << "найден удвоенный апостроф, пропуск...\n";
-					i++; //пропускаю след элемент тк там ''
-				} else {
-					instring = !instring;
-					/*if (instring) {
-						std::cout << "начало строки в апострофах.\n";
-					}
-					else {
-						std::cout << "конец строки в апострофах.\n";
-					}*/
-				}
-			}
-			if (!instring) {
-				if (ch == '{') {
-					if (top < max_size - 1) {
-						comtype[++top] = '{';
-						comline[top] = linecount;
-						composition[top] = static_cast<int>(i + 1);
-					}
-					else {
-						std::cout << "превышена глубина вложенности" << std::endl;
-						return false;
-					}
-				}
-				else if (ch == '(' && i + 1 < line.size() && line[i + 1] == '*') {
-					if (top < max_size - 1) {
-						comtype[++top] = '(';
-						comline[top] = linecount;
-						composition[top] = static_cast<int>(i + 1); //перевод в тип int тк у нас там был тип size_t
-						i++; //пропускаю след элемент тк там (*
-					}
-					else {
-						std::cout << "превышена глубина вложенности" << std::endl;
-						return false;
-					}
-				}
-				else if (ch == '}' && (top != -1 && comtype[top] == '{')) {
-					top--;  // убираем комментарий из стека
-				}
-				else if (ch == '*' && i + 1 < line.size() && line[i + 1] == ')' && (top != -1 && comtype[top] == '(')) {
-					top--;  // убираем комментарий из стека
-					i++;  // пропускаем следующий символ ')'
-				}
-			}
-		}
-		if (instring) {
-			std::cout << "ошибка: строка не закрыта в строке " << linecount << ".\n";
-			return false;
-		}
-	}
-	inputfile.close();
-	if (top != -1) {
-		std::cout << "остались незакрытые коментарии" << std::endl;
-		errorline = comline[top];
-		errorline = composition[top];
-		return false;
-	}
+    file.close();
+    outputFile.close();
 
-	return true;
+    if (hasErrors) {
+        remove(outputFileName.c_str());
+        cout << "Файл не создан из-за ошибок" << endl;
+    }
+}
+
+int main() {
+    setlocale(LC_ALL, "RU");
+    string filename;
+    string outputFileName;
+    while (true) {
+        cout << "Введите имя входного файла: ";
+        cin >> filename;
+        cout << "Введите имя выходного файла: ";
+        cin >> outputFileName;
+        cout << "Чтобы выйти напишите 'exit'" << endl;
+        if (filename == "exit") {
+            break;
+        }
+        checkComments(filename, outputFileName);
+    }
+    return 0;
 }
