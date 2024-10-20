@@ -1,0 +1,22 @@
+Root -1
+2
+node -1
+2
+Child1 5
+0
+Child2 -1
+2
+Child3 3
+0
+Child4 7
+0
+node -1
+2
+Child2 5
+0
+Child5 -1
+2
+Child6 3
+0
+Child7 7
+0
