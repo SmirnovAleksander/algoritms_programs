@@ -24,24 +24,20 @@ struct TreeNode {
     TreeNode(string n, int m = -1) : name(n), mass(m) {}
 };
 
-// Функция для загрузки дерева из файла (рекурсивная)
 TreeNode* loadTree(ifstream& file) {
     string name;
     int mass;
 
-    // Чтение имени узла
     if (!(file >> name)) {
-        cerr << "Ошибка чтения имени узла!" << endl;
+        cerr << "Нет имени узла!" << endl;
         return nullptr;
     }
-
-    // Чтение массы узла
     if (!(file >> mass)) {
-        cerr << "Ошибка чтения массы узла!" << endl;
+        cerr << "Нет массы узла!" << endl;
         return nullptr;
     }
 
-    TreeNode* node = new TreeNode(name, mass); // Создаем узел
+    TreeNode* node = new TreeNode(name, mass);
 
     int numChildren;
     if (!(file >> numChildren)) {
@@ -50,20 +46,18 @@ TreeNode* loadTree(ifstream& file) {
     }
 
     for (int i = 0; i < numChildren; ++i) {
-        TreeNode* child = loadTree(file); // Рекурсивно загружаем потомков
+        TreeNode* child = loadTree(file);
         if (child) {
             node->children.push_back(child);
         }
         else {
-            cerr << "Ошибка загрузки потомка узла " << name << endl;
+            cerr << "Ошибка загрузки ребенка узла " << name << endl;
             return nullptr;
         }
     }
 
     return node;
 }
-
-// Функция для загрузки дерева из файла
 TreeNode* loadTreeFromFile(const string& filename) {
     ifstream file(filename);
     if (!file.is_open()) {
@@ -71,42 +65,31 @@ TreeNode* loadTreeFromFile(const string& filename) {
         return nullptr;
     }
 
-    TreeNode* root = loadTree(file); // Загружаем дерево рекурсивно
+    TreeNode* root = loadTree(file);
     file.close();
     return root;
 }
-
-// Функция для вывода дерева на экран
 void printTree(TreeNode* node, int level = 0) {
     if (node == nullptr) return;
-
-    // Отступы для визуализации дерева
     for (int i = 0; i < level; ++i) {
         cout << "  ";
     }
     cout << node->name;
 
-    if (node->mass != -1) { // Если это лист, выводим массу
+    if (node->mass != -1) {
         cout << " (Масса: " << node->mass << ")";
     }
     cout << endl;
 
-    // Рекурсивно выводим дочерние узлы
     for (TreeNode* child : node->children) {
         printTree(child, level + 1);
     }
 }
-
-// Функция для обрезки дерева по массе
 TreeNode* trimTree(TreeNode* node, int maxMass) {
     if (node == nullptr) return nullptr;
-
-    // Если это листовой узел, проверяем его массу
     if (node->children.empty()) {
         return (node->mass <= maxMass) ? node : nullptr;
     }
-
-    // Рекурсивно обрезаем дочерние узлы
     vector<TreeNode*> trimmedChildren;
     for (TreeNode* child : node->children) {
         TreeNode* trimmedChild = trimTree(child, maxMass);
@@ -116,12 +99,8 @@ TreeNode* trimTree(TreeNode* node, int maxMass) {
     }
 
     node->children = trimmedChildren;
-
-    // Если узел не имеет допустимых детей и не является листом, он удаляется
     return (!node->children.empty() || node->mass != -1) ? node : nullptr;
 }
-
-// Функция для освобождения памяти дерева
 void deleteTree(TreeNode* node) {
     if (node == nullptr) return;
     for (TreeNode* child : node->children) {
@@ -132,29 +111,25 @@ void deleteTree(TreeNode* node) {
 
 int main() {
     setlocale(LC_ALL, "RU");
-    string filename = "tree.txt"; // Имя файла с деревом
+    string filename = "tree.txt";
     int maxMass;
-
-    // Загружаем дерево из файла
     TreeNode* root = loadTreeFromFile(filename);
     if (!root) {
         cerr << "Ошибка загрузки дерева!" << endl;
         return 1;
     }
 
-    cout << "Введите максимально допустимую массу: ";
+    cout << "Введите максимально массу: ";
     cin >> maxMass;
 
     cout << "Исходное дерево:" << endl;
     printTree(root);
 
-    // Обрезаем дерево
     root = trimTree(root, maxMass);
 
     cout << "Обрезанное дерево:" << endl;
     printTree(root);
 
-    // Освобождаем память
     deleteTree(root);
 
     return 0;
