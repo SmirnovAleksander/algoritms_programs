@@ -13,6 +13,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <sstream>
 
 using namespace std;
 
@@ -25,38 +26,56 @@ struct TreeNode {
 };
 
 TreeNode* loadTree(ifstream& file) {
-    string name;
-    int mass;
+    vector<TreeNode*> nodeStack;
+    string line;
 
-    if (!(file >> name)) {
-        cerr << "Нет имени узла!" << endl;
-        return nullptr;
-    }
-    if (!(file >> mass)) {
-        cerr << "Нет массы узла!" << endl;
-        return nullptr;
-    }
+    while (getline(file, line)) {
+        // Определяем уровень вложенности по количеству точек
+        int level = 0;
+        while (level < line.size() && line[level] == '.') {
+            level++;
+        }
 
-    TreeNode* node = new TreeNode(name, mass);
+        // Убираем точки из строки
+        line = line.substr(level);
 
-    int numChildren;
-    if (!(file >> numChildren)) {
-        cerr << "Ошибка чтения количества потомков!" << endl;
-        return nullptr;
-    }
+        // Разделяем имя и массу
+        istringstream ss(line);
+        string name;
+        int mass;
+        ss >> name >> mass;
 
-    for (int i = 0; i < numChildren; ++i) {
-        TreeNode* child = loadTree(file);
-        if (child) {
-            node->children.push_back(child);
+        // Создаем новый узел
+        TreeNode* node = new TreeNode(name, mass);
+
+        // Устанавливаем родителя для узла в соответствии с уровнем
+        if (level == 0) {
+            // Корневой узел
+            nodeStack.clear();
+            nodeStack.push_back(node);
         }
         else {
-            cerr << "Ошибка загрузки ребенка узла " << name << endl;
-            return nullptr;
+            // Получаем родителя с предыдущего уровня
+            if (level > nodeStack.size()) {
+                cerr << "Ошибка: уровень вложенности нарушен!" << endl;
+                delete node;
+                return nullptr;
+            }
+
+            TreeNode* parent = nodeStack[level - 1];
+            parent->children.push_back(node);
+
+            // Обновляем стек узлов
+            if (level < nodeStack.size()) {
+                nodeStack[level] = node;
+            }
+            else {
+                nodeStack.push_back(node);
+            }
         }
     }
 
-    return node;
+    return nodeStack.empty() ? nullptr : nodeStack[0];
 }
 TreeNode* loadTreeFromFile(const string& filename) {
     ifstream file(filename);
