@@ -105,9 +105,9 @@ void printTree(TreeNode* node, int level = 0) {
     }
 }
 TreeNode* trimTree(TreeNode* node, int maxMass) {
-    if (node == nullptr) return nullptr;
-    if (node->children.empty()) {
-        return (node->mass <= maxMass) ? node : nullptr;
+    if (node == nullptr) return nullptr;    
+    if (node->mass > maxMass) {
+        return nullptr;
     }
     vector<TreeNode*> trimmedChildren;
     for (TreeNode* child : node->children) {
@@ -118,7 +118,7 @@ TreeNode* trimTree(TreeNode* node, int maxMass) {
     }
 
     node->children = trimmedChildren;
-    return (!node->children.empty() || node->mass != -1) ? node : nullptr;
+    return node;
 }
 void deleteTree(TreeNode* node) {
     if (node == nullptr) return;

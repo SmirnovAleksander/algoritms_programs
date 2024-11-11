@@ -1,7 +1,7 @@
-Root 10
-.Child1 5
-..Child1_1 3
-..Child1_2 2
-.Child2 8
-..Child2_1 7
-.Child3 15
+Ro 10
+.Chil 5
+..Chil1 3
+..Child 2
+.Chil 8
+..Chi1 7
+.Child 15
