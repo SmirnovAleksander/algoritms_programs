@@ -9,7 +9,6 @@
 //Смирнов Александр ПС-21 
 //Компилятор: C++
 //Среда выполнеия: Visual studio 2022
-
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -17,12 +16,15 @@
 
 using namespace std;
 
+enum NodeType { LEAF, AND, OR };
+
 struct TreeNode {
     string name;
     int mass;
+    NodeType type;
     vector<TreeNode*> children;
 
-    TreeNode(string n, int m = -1) : name(n), mass(m) {}
+    TreeNode(string n, int m = -1, NodeType t = LEAF) : name(n), mass(m), type(t) {}
 };
 
 TreeNode* loadTree(ifstream& file) {
@@ -30,32 +32,30 @@ TreeNode* loadTree(ifstream& file) {
     string line;
 
     while (getline(file, line)) {
-        // Определяем уровень вложенности по количеству точек
         int level = 0;
         while (level < line.size() && line[level] == '.') {
             level++;
         }
 
-        // Убираем точки из строки
         line = line.substr(level);
 
-        // Разделяем имя и массу
         istringstream ss(line);
         string name;
         int mass;
-        ss >> name >> mass;
+        string typeStr;
+        ss >> name >> typeStr >> mass;
 
-        // Создаем новый узел
-        TreeNode* node = new TreeNode(name, mass);
+        NodeType type = LEAF;
+        if (typeStr == "AND") type = AND;
+        else if (typeStr == "OR") type = OR;
 
-        // Устанавливаем родителя для узла в соответствии с уровнем
+        TreeNode* node = new TreeNode(name, mass, type);
+
         if (level == 0) {
-            // Корневой узел
             nodeStack.clear();
             nodeStack.push_back(node);
         }
         else {
-            // Получаем родителя с предыдущего уровня
             if (level > nodeStack.size()) {
                 cerr << "Ошибка: уровень вложенности нарушен!" << endl;
                 delete node;
@@ -65,7 +65,6 @@ TreeNode* loadTree(ifstream& file) {
             TreeNode* parent = nodeStack[level - 1];
             parent->children.push_back(node);
 
-            // Обновляем стек узлов
             if (level < nodeStack.size()) {
                 nodeStack[level] = node;
             }
@@ -77,6 +76,7 @@ TreeNode* loadTree(ifstream& file) {
 
     return nodeStack.empty() ? nullptr : nodeStack[0];
 }
+
 TreeNode* loadTreeFromFile(const string& filename) {
     ifstream file(filename);
     if (!file.is_open()) {
@@ -88,12 +88,16 @@ TreeNode* loadTreeFromFile(const string& filename) {
     file.close();
     return root;
 }
+
 void printTree(TreeNode* node, int level = 0) {
     if (node == nullptr) return;
     for (int i = 0; i < level; ++i) {
         cout << "  ";
     }
     cout << node->name;
+
+    if (node->type == AND) cout << " [AND]";
+    else if (node->type == OR) cout << " [OR]";
 
     if (node->mass != -1) {
         cout << " (Масса: " << node->mass << ")";
@@ -104,11 +108,14 @@ void printTree(TreeNode* node, int level = 0) {
         printTree(child, level + 1);
     }
 }
+
 TreeNode* trimTree(TreeNode* node, int maxMass) {
-    if (node == nullptr) return nullptr;    
+    if (node == nullptr) return nullptr;
+
     if (node->mass > maxMass) {
         return nullptr;
     }
+
     vector<TreeNode*> trimmedChildren;
     for (TreeNode* child : node->children) {
         TreeNode* trimmedChild = trimTree(child, maxMass);
@@ -117,9 +124,26 @@ TreeNode* trimTree(TreeNode* node, int maxMass) {
         }
     }
 
-    node->children = trimmedChildren;
+    if (node->type == AND) {
+        if (trimmedChildren.size() == node->children.size()) {
+            node->children = trimmedChildren;
+            return node;
+        }
+        delete node;
+        return nullptr;
+    }
+    else if (node->type == OR) {
+        if (!trimmedChildren.empty()) {
+            node->children = trimmedChildren;
+            return node;
+        }
+        delete node;
+        return nullptr;
+    }
+
     return node;
 }
+
 void deleteTree(TreeNode* node) {
     if (node == nullptr) return;
     for (TreeNode* child : node->children) {
@@ -138,7 +162,7 @@ int main() {
         return 1;
     }
 
-    cout << "Введите максимально массу: ";
+    cout << "Введите максимально допустимую массу: ";
     cin >> maxMass;
 
     cout << "Исходное дерево:" << endl;

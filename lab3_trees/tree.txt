@@ -1,7 +1,8 @@
-Ro 10
-.Chil 5
-..Chil1 3
-..Child 2
-.Chil 8
-..Chi1 7
-.Child 15
+Root OR 10
+.Child1 OR 50
+..Leaf1 LEAF 20
+..Leaf2 LEAF 60
+.Child2 AND 30
+..Leaf3 LEAF 10
+..Leaf4 LEAF 25
+.Child3 LEAF 45
