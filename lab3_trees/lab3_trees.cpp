@@ -1,18 +1,8 @@
-//24. В  листьях  И - ИЛИ  дерева, соответствующего некоторому
-//множеству  конструкций, заданы   значения   массы.Известно
-//максимально допустимое значение массы изделия.Требуется усечь
-//дерево   так, чтобы   дерево    включало    все    элементы,
-//соответствующие  допустимым  значениям массы, но не содержало
-//"лишних" вершин.Конечное дерево выдать на экран в  наглядном
-//виде(12).
-//
-//Смирнов Александр ПС-21 
-//Компилятор: C++
-//Среда выполнеия: Visual studio 2022
 #include <iostream>
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <algorithm> // Для min и max
 
 using namespace std;
 
@@ -23,10 +13,13 @@ struct TreeNode {
     int mass;
     NodeType type;
     vector<TreeNode*> children;
+    int minMass; // Минимальная масса поддерева
+    int maxMass; // Максимальная масса поддерева
 
-    TreeNode(string n, int m = -1, NodeType t = LEAF) : name(n), mass(m), type(t) {}
+    TreeNode(string n, int m = -1, NodeType t = LEAF) : name(n), mass(m), type(t), minMass(0), maxMass(0) {}
 };
 
+// Загрузка дерева
 TreeNode* loadTree(ifstream& file) {
     vector<TreeNode*> nodeStack;
     string line;
@@ -49,7 +42,10 @@ TreeNode* loadTree(ifstream& file) {
         if (typeStr == "AND") type = AND;
         else if (typeStr == "OR") type = OR;
 
-        TreeNode* node = new TreeNode(name, mass, type);
+        // Если узел не лист, игнорируем его массу
+        int adjustedMass = (type == LEAF) ? mass : -1;
+
+        TreeNode* node = new TreeNode(name, adjustedMass, type);
 
         if (level == 0) {
             nodeStack.clear();
@@ -77,6 +73,105 @@ TreeNode* loadTree(ifstream& file) {
     return nodeStack.empty() ? nullptr : nodeStack[0];
 }
 
+// Снизу вверх: расчёт минимальной и максимальной массы для каждого узла
+void calculateMassRanges(TreeNode* node) {
+    if (!node) return;
+
+    if (node->type == LEAF) {
+        node->minMass = node->mass;
+        node->maxMass = node->mass;
+        return;
+    }
+
+    int minMass = 0;
+    int maxMass = 0;
+
+    for (TreeNode* child : node->children) {
+        calculateMassRanges(child);
+
+        if (node->type == AND) {
+            minMass += child->minMass;
+            maxMass += child->maxMass;
+        }
+        else if (node->type == OR) {
+            minMass = (minMass == 0) ? child->minMass : min(minMass, child->minMass);
+            maxMass = max(maxMass, child->maxMass);
+        }
+    }
+
+    node->minMass = minMass;
+    node->maxMass = maxMass;
+}
+
+// Сверху вниз: обрезка дерева на основе ограничений
+TreeNode* trimTree(TreeNode* node, int maxMass) {
+    if (!node) return nullptr;
+
+    // Если масса меньше минимальной, узел нельзя сохранить
+    if (maxMass < node->minMass) return nullptr;
+
+    // Если узел лист, проверяем его массу
+    if (node->type == LEAF) {
+        return (node->mass <= maxMass) ? node : nullptr;
+    }
+
+    vector<TreeNode*> trimmedChildren;
+
+    if (node->type == AND) {
+        int remainingMass = maxMass;
+
+        // Учёт минимальных масс дочерних узлов
+        for (TreeNode* child : node->children) {
+            remainingMass -= child->minMass;
+        }
+
+        for (TreeNode* child : node->children) {
+            int childMaxMass = remainingMass + child->minMass;
+            TreeNode* trimmedChild = trimTree(child, childMaxMass);
+            if (trimmedChild) {
+                trimmedChildren.push_back(trimmedChild);
+            }
+        }
+
+        if (trimmedChildren.size() == node->children.size()) {
+            node->children = trimmedChildren;
+            return node;
+        }
+        else {
+            delete node;
+            return nullptr;
+        }
+    }
+    else if (node->type == OR) {
+        for (TreeNode* child : node->children) {
+            TreeNode* trimmedChild = trimTree(child, maxMass);
+            if (trimmedChild) {
+                trimmedChildren.push_back(trimmedChild);
+            }
+        }
+
+        if (!trimmedChildren.empty()) {
+            node->children = trimmedChildren;
+            return node;
+        }
+        else {
+            delete node;
+            return nullptr;
+        }
+    }
+
+    return nullptr;
+}
+
+// Удаление дерева
+void deleteTree(TreeNode* node) {
+    if (!node) return;
+    for (TreeNode* child : node->children) {
+        deleteTree(child);
+    }
+    delete node;
+}
+
 TreeNode* loadTreeFromFile(const string& filename) {
     ifstream file(filename);
     if (!file.is_open()) {
@@ -89,8 +184,9 @@ TreeNode* loadTreeFromFile(const string& filename) {
     return root;
 }
 
+// Печать дерева
 void printTree(TreeNode* node, int level = 0) {
-    if (node == nullptr) return;
+    if (!node) return;
     for (int i = 0; i < level; ++i) {
         cout << "  ";
     }
@@ -102,54 +198,12 @@ void printTree(TreeNode* node, int level = 0) {
     if (node->mass != -1) {
         cout << " (Масса: " << node->mass << ")";
     }
-    cout << endl;
+
+    cout << " [" << node->minMass << ", " << node->maxMass << "]" << endl;
 
     for (TreeNode* child : node->children) {
         printTree(child, level + 1);
     }
-}
-
-TreeNode* trimTree(TreeNode* node, int maxMass) {
-    if (node == nullptr) return nullptr;
-
-    if (node->mass > maxMass) {
-        return nullptr;
-    }
-
-    vector<TreeNode*> trimmedChildren;
-    for (TreeNode* child : node->children) {
-        TreeNode* trimmedChild = trimTree(child, maxMass);
-        if (trimmedChild) {
-            trimmedChildren.push_back(trimmedChild);
-        }
-    }
-
-    if (node->type == AND) {
-        if (trimmedChildren.size() == node->children.size()) {
-            node->children = trimmedChildren;
-            return node;
-        }
-        delete node;
-        return nullptr;
-    }
-    else if (node->type == OR) {
-        if (!trimmedChildren.empty()) {
-            node->children = trimmedChildren;
-            return node;
-        }
-        delete node;
-        return nullptr;
-    }
-
-    return node;
-}
-
-void deleteTree(TreeNode* node) {
-    if (node == nullptr) return;
-    for (TreeNode* child : node->children) {
-        deleteTree(child);
-    }
-    delete node;
 }
 
 int main() {
@@ -166,12 +220,18 @@ int main() {
     cin >> maxMass;
 
     cout << "Исходное дерево:" << endl;
+    calculateMassRanges(root);
     printTree(root);
 
     root = trimTree(root, maxMass);
 
-    cout << "Обрезанное дерево:" << endl;
-    printTree(root);
+    if (!root) {
+        cout << "Дерево пустое после обрезки." << endl;
+    }
+    else {
+        cout << "Обрезанное дерево:" << endl;
+        printTree(root);
+    }
 
     deleteTree(root);
 
