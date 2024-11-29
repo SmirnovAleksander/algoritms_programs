@@ -15,8 +15,9 @@ struct TreeNode {
     vector<TreeNode*> children;
     int minMass; // Минимальная масса поддерева
     int maxMass; // Максимальная масса поддерева
+    int limitMass; // Ограничение массы для этого узла
 
-    TreeNode(string n, int m = -1, NodeType t = LEAF) : name(n), mass(m), type(t), minMass(0), maxMass(0) {}
+    TreeNode(string n, int m = -1, NodeType t = LEAF) : name(n), mass(m), type(t), minMass(0), maxMass(0), limitMass(0) {}
 };
 
 // Загрузка дерева
@@ -135,6 +136,7 @@ TreeNode* trimTree(TreeNode* node, int maxMass) {
 
         if (trimmedChildren.size() == node->children.size()) {
             node->children = trimmedChildren;
+            node->limitMass = maxMass; // Ограничение для этого узла
             return node;
         }
         else {
@@ -152,6 +154,7 @@ TreeNode* trimTree(TreeNode* node, int maxMass) {
 
         if (!trimmedChildren.empty()) {
             node->children = trimmedChildren;
+            node->limitMass = maxMass; // Ограничение для этого узла
             return node;
         }
         else {
@@ -184,7 +187,7 @@ TreeNode* loadTreeFromFile(const string& filename) {
     return root;
 }
 
-// Печать дерева
+// Печать дерева с отображением ограничений
 void printTree(TreeNode* node, int level = 0) {
     if (!node) return;
     for (int i = 0; i < level; ++i) {
@@ -199,7 +202,12 @@ void printTree(TreeNode* node, int level = 0) {
         cout << " (Масса: " << node->mass << ")";
     }
 
-    cout << " [" << node->minMass << ", " << node->maxMass << "]" << endl;
+    // Печать ограничений
+    if (node->limitMass > 0) {
+        cout << " (Ограничение: <= " << node->limitMass << ")";
+    }
+
+    cout << " [Min: " << node->minMass << ", Max: " << node->maxMass << "]" << endl;
 
     for (TreeNode* child : node->children) {
         printTree(child, level + 1);
