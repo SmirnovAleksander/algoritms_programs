@@ -2,7 +2,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
-#include <algorithm> // Для min и max
+#include <algorithm>
 
 using namespace std;
 
@@ -13,9 +13,9 @@ struct TreeNode {
     int mass;
     NodeType type;
     vector<TreeNode*> children;
-    int minMass; // Минимальная масса поддерева
-    int maxMass; // Максимальная масса поддерева
-    int limitMass; // Ограничение массы для этого узла
+    int minMass;
+    int maxMass;
+    int limitMass;
 
     TreeNode(string n, int m = -1, NodeType t = LEAF) : name(n), mass(m), type(t), minMass(0), maxMass(0), limitMass(0) {}
 };
@@ -43,7 +43,6 @@ TreeNode* loadTree(ifstream& file) {
         if (typeStr == "AND") type = AND;
         else if (typeStr == "OR") type = OR;
 
-        // Если узел не лист, игнорируем его массу
         int adjustedMass = (type == LEAF) ? mass : -1;
 
         TreeNode* node = new TreeNode(name, adjustedMass, type);
@@ -108,10 +107,8 @@ void calculateMassRanges(TreeNode* node) {
 TreeNode* trimTree(TreeNode* node, int maxMass) {
     if (!node) return nullptr;
 
-    // Если масса меньше минимальной, узел нельзя сохранить
     if (maxMass < node->minMass) return nullptr;
 
-    // Если узел лист, проверяем его массу
     if (node->type == LEAF) {
         return (node->mass <= maxMass) ? node : nullptr;
     }
@@ -136,7 +133,7 @@ TreeNode* trimTree(TreeNode* node, int maxMass) {
 
         if (trimmedChildren.size() == node->children.size()) {
             node->children = trimmedChildren;
-            node->limitMass = maxMass; // Ограничение для этого узла
+            node->limitMass = maxMass;
             return node;
         }
         else {
@@ -154,7 +151,7 @@ TreeNode* trimTree(TreeNode* node, int maxMass) {
 
         if (!trimmedChildren.empty()) {
             node->children = trimmedChildren;
-            node->limitMass = maxMass; // Ограничение для этого узла
+            node->limitMass = maxMass;
             return node;
         }
         else {
@@ -187,8 +184,7 @@ TreeNode* loadTreeFromFile(const string& filename) {
     return root;
 }
 
-// Печать дерева с отображением ограничений
-void printTree(TreeNode* node, int level = 0) {
+void printTreeWithLimits(TreeNode* node, int level = 0) {
     if (!node) return;
     for (int i = 0; i < level; ++i) {
         cout << "  ";
@@ -202,18 +198,35 @@ void printTree(TreeNode* node, int level = 0) {
         cout << " (Масса: " << node->mass << ")";
     }
 
-    // Печать ограничений
     if (node->limitMass > 0) {
         cout << " (Ограничение: <= " << node->limitMass << ")";
     }
 
-    cout << " [Min: " << node->minMass << ", Max: " << node->maxMass << "]" << endl;
+    cout << " [" << node->minMass << ", " << node->maxMass << "]" << endl;
 
     for (TreeNode* child : node->children) {
-        printTree(child, level + 1);
+        printTreeWithLimits(child, level + 1);
     }
 }
 
+// простой формат
+void printTreeWithoutLimits(TreeNode* node, int level = 0) {
+    if (!node) return;
+    for (int i = 0; i < level; ++i) {
+        cout << ".";
+    }
+    cout << node->name;
+
+    if (node->type == AND) cout << " AND 0";
+    else if (node->type == OR) cout << " OR 0";
+    else cout << " LEAF " << node->mass;
+
+    cout << endl;
+
+    for (TreeNode* child : node->children) {
+        printTreeWithoutLimits(child, level + 1);
+    }
+}
 int main() {
     setlocale(LC_ALL, "RU");
     string filename = "tree.txt";
@@ -227,9 +240,9 @@ int main() {
     cout << "Введите максимально допустимую массу: ";
     cin >> maxMass;
 
-    cout << "Исходное дерево:" << endl;
+    cout << "Исходное дерево с ограничениями:" << endl;
     calculateMassRanges(root);
-    printTree(root);
+    printTreeWithLimits(root);
 
     root = trimTree(root, maxMass);
 
@@ -237,9 +250,12 @@ int main() {
         cout << "Дерево пустое после обрезки." << endl;
     }
     else {
-        cout << "Обрезанное дерево:" << endl;
-        printTree(root);
+        cout << "Обрезанное дерево с ограничениями:" << endl;
+        printTreeWithLimits(root);
     }
+
+    cout << "\nОбрезанное дерево без ограничений:" << endl;
+    printTreeWithoutLimits(root);
 
     deleteTree(root);
 
