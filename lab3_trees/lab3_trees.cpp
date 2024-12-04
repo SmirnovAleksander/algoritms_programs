@@ -1,3 +1,13 @@
+//24. В  листьях  И - ИЛИ  дерева, соответствующего некоторому
+//множеству  конструкций, заданы   значения   массы.Известно
+//максимально допустимое значение массы изделия.Требуется усечь
+//дерево   так, чтобы   дерево    включало    все    элементы,
+//соответствующие  допустимым  значениям массы, но не содержало
+//"лишних" вершин.Конечное дерево выдать на экран в  наглядном
+//виде(12).
+//Смирнов Александр ПС-21
+//Язык: C++ 
+//Visual Studio 2022
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -20,7 +30,6 @@ struct TreeNode {
     TreeNode(string n, int m = -1, NodeType t = LEAF) : name(n), mass(m), type(t), minMass(0), maxMass(0), limitMass(0) {}
 };
 
-// Загрузка дерева
 TreeNode* loadTree(ifstream& file) {
     vector<TreeNode*> nodeStack;
     string line;
@@ -73,7 +82,7 @@ TreeNode* loadTree(ifstream& file) {
     return nodeStack.empty() ? nullptr : nodeStack[0];
 }
 
-// Снизу вверх: расчёт минимальной и максимальной массы для каждого узла
+// Снизу вверх: расчёт границ для узла 
 void calculateMassRanges(TreeNode* node) {
     if (!node) return;
 
@@ -103,7 +112,7 @@ void calculateMassRanges(TreeNode* node) {
     node->maxMass = maxMass;
 }
 
-// Сверху вниз: обрезка дерева на основе ограничений
+// обрезка дерева по ограничениям 
 TreeNode* trimTree(TreeNode* node, int maxMass) {
     if (!node) return nullptr;
 
@@ -118,7 +127,7 @@ TreeNode* trimTree(TreeNode* node, int maxMass) {
     if (node->type == AND) {
         int remainingMass = maxMass;
 
-        // Учёт минимальных масс дочерних узлов
+        // вычисление ограничений на каждый из листьев
         for (TreeNode* child : node->children) {
             remainingMass -= child->minMass;
         }
@@ -163,7 +172,6 @@ TreeNode* trimTree(TreeNode* node, int maxMass) {
     return nullptr;
 }
 
-// Удаление дерева
 void deleteTree(TreeNode* node) {
     if (!node) return;
     for (TreeNode* child : node->children) {
@@ -183,7 +191,7 @@ TreeNode* loadTreeFromFile(const string& filename) {
     file.close();
     return root;
 }
-
+// Формат со всеми ограничениями 
 void printTreeWithLimits(TreeNode* node, int level = 0) {
     if (!node) return;
     for (int i = 0; i < level; ++i) {
@@ -251,11 +259,12 @@ int main() {
     }
     else {
         cout << "Обрезанное дерево с ограничениями:" << endl;
-        printTreeWithLimits(root);
-    }
 
-    cout << "\nОбрезанное дерево без ограничений:" << endl;
-    printTreeWithoutLimits(root);
+        printTreeWithLimits(root);
+        cout << "\nОбрезанное дерево без ограничений:" << endl;
+        printTreeWithoutLimits(root);
+
+    }
 
     deleteTree(root);
 
