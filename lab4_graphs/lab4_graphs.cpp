@@ -20,11 +20,13 @@ struct Graph {
 void mainCycle(int start, const std::vector<std::vector<Graph>>& graph) {
     int n = graph.size();
     int minCycle = maxInt;
+    int endCity = -1;
+    int parent[100] = { 0 };
 
     for (int i = 0; i < n; i++) {
         std::vector<int> length(n, maxInt);
+        int visited[100] = { 0 };
         length[start] = 0;
-        std::vector<bool> visited(n, false);
 
         for (int j = 0; j < n; j++) {
             int u = -1;
@@ -35,25 +37,25 @@ void mainCycle(int start, const std::vector<std::vector<Graph>>& graph) {
             }
 
             if (u == -1 || length[u] == maxInt) break;
+            visited[u] = 1;
 
-            visited[u] = true;
-
-            for (const Graph& Graph : graph[u]) {
-                int v = Graph.to;
-                int weight = Graph.weight;
+            for (const Graph& edge : graph[u]) {
+                int v = edge.to;
+                int weight = edge.weight;
 
                 if (length[v] > length[u] + weight) {
                     length[v] = length[u] + weight;
+                    parent[v] = u;
                 }
             }
         }
 
-        for (const Graph& Graph : graph[i]) {
-            if (Graph.to == start) {
-                if (length[i] + Graph.weight < minCycle) {
-                    minCycle = length[i] + Graph.weight;
+        for (const Graph& edge : graph[i]) {
+            if (edge.to == start) {
+                if (length[i] + edge.weight < minCycle) {
+                    minCycle = length[i] + edge.weight;
+                    endCity = i;
                 }
-
             }
         }
     }
@@ -63,6 +65,27 @@ void mainCycle(int start, const std::vector<std::vector<Graph>>& graph) {
     }
     else {
         std::cout << "Длина минимального цикла начинается от города " << start + 1 << " это " << minCycle << "\n";
+
+        if (endCity != -1) {
+            int current = endCity;
+            std::vector<int> path;
+
+            while (current != start) {
+                path.push_back(current + 1);
+                current = parent[current];
+            }
+
+            path.push_back(start + 1);
+
+            std::cout << "Путь: ";
+            for (int i = path.size() - 1; i >= 0; i--) {
+                std::cout << path[i] << "->";
+            }
+            std::cout << start + 1 << "\n";
+        }
+        else {
+            std::cerr << "Ошибка при восстановлении пути\n";
+        }
     }
 }
 
@@ -71,6 +94,7 @@ int main() {
     std::ifstream file("graph.txt");
     if (!file) {
         std::cerr << "Ошибка при открытии файла\n";
+        return 1;
     }
 
     int n, m;
